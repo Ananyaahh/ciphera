@@ -13,7 +13,7 @@ import {
   SESSION_WINDOW_MS,
   SESSION_WINDOW_MAX_FRAMES,
 } from "@/lib/auth";
-import { verifyLiveness } from "@/lib/webauthn";
+import { verifyLiveness } from "@/lib/biometric";
 import { hkdf, randomHex, randomId, sha256Hex, signHex, bufToHex } from "@/lib/crypto";
 import { getDeviceKeyPair, putImage, getImagesForUser } from "@/lib/db";
 import { appendRecord } from "@/lib/ledger";

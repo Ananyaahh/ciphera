@@ -25,11 +25,10 @@ declare global {
   }
 }
 import {
-  isWebAuthnSupported,
-  isPlatformAuthenticatorAvailable,
+  isBiometricAvailable,
   enrollBiometric,
   verifyLiveness,
-} from "@/lib/webauthn";
+} from "@/lib/biometric";
 import { generateDeviceKeyPair, exportPublicKeyJwk } from "@/lib/crypto";
 import { putDeviceKeyPair, getDeviceKeyPair } from "@/lib/db";
 import type { CipheraUser } from "@/lib/types";
@@ -216,15 +215,10 @@ export default function LoginPage() {
     setBusy(true);
     setBioStatus("Waiting for your device's biometric prompt…");
     try {
-      if (!isWebAuthnSupported()) {
-        throw new Error(
-          "This browser doesn't support platform biometrics. Try a modern Chrome, Safari, or Edge on a device with Touch ID / Windows Hello / a fingerprint sensor."
-        );
-      }
-      const available = await isPlatformAuthenticatorAvailable();
+      const available = await isBiometricAvailable();
       if (!available) {
         throw new Error(
-          "No platform authenticator (fingerprint / face unlock) was found on this device."
+          "No biometric (Face ID / Touch ID / fingerprint) is set up on this device. Add one in your device settings, then try again."
         );
       }
 
