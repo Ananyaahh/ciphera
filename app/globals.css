@@ -1,0 +1,417 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-ink-950: 10 11 13;
+  --color-ink-900: 17 19 24;
+  --color-ink-800: 24 27 33;
+  --color-ink-700: 34 38 46;
+  --color-ink-600: 46 51 61;
+  --color-paper: 235 227 212;
+  --color-muted: 172 157 136;
+  --color-thread-teal: 226 184 116;
+  --color-thread-indigo: 198 140 82;
+  --color-thread-violet: 170 106 60;
+  --noise-dot: 255 255 255;
+  color-scheme: dark;
+
+  /* --- Cinematic scene tokens (dark) --- */
+  --grid-line: 255 255 255;
+  --grid-dot: 255 255 255;
+  --cursor: 237 233 226;
+  --glass: 18 20 25;
+  --glass-strong: 12 13 17;
+  --glass-border: 255 255 255;
+  --hairline: 255 255 255;
+  --glow: 212 170 120;
+  --veil: 10 11 13;
+}
+
+.light {
+  --color-ink-950: 250 249 246;
+  --color-ink-900: 255 255 255;
+  --color-ink-800: 244 242 237;
+  --color-ink-700: 226 223 216;
+  --color-ink-600: 203 199 190;
+  --color-paper: 48 38 27;
+  --color-muted: 116 99 79;
+  --color-thread-teal: 168 116 44;
+  --color-thread-indigo: 146 92 40;
+  --color-thread-violet: 120 72 34;
+  --noise-dot: 0 0 0;
+  color-scheme: light;
+
+  /* --- Cinematic scene tokens (light interpretation, not an inversion) --- */
+  --grid-line: 23 23 25;
+  --grid-dot: 23 23 25;
+  --cursor: 23 23 25;
+  --glass: 255 255 255;
+  --glass-strong: 255 255 255;
+  --glass-border: 23 23 25;
+  --hairline: 23 23 25;
+  --glow: 150 104 52;
+  --veil: 250 249 246;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/* Chromatic-aberration glitch text (mission statement section) */
+.glitch-text {
+  position: relative;
+  display: inline-block;
+}
+.glitch-text::before,
+.glitch-text::after {
+  content: attr(data-text);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+.glitch-text::before {
+  color: rgb(var(--color-thread-teal));
+  mix-blend-mode: screen;
+  animation: glitchTopShift 5s infinite steps(1, end);
+  clip-path: inset(0 0 55% 0);
+}
+.glitch-text::after {
+  color: rgb(var(--color-thread-violet));
+  mix-blend-mode: screen;
+  animation: glitchBottomShift 5s infinite steps(1, end);
+  clip-path: inset(55% 0 0 0);
+}
+@keyframes glitchTopShift {
+  0%, 88%, 100% { transform: translate(0, 0); opacity: 0; }
+  89% { transform: translate(-2px, -1px); opacity: 0.8; }
+  91% { transform: translate(2px, 0); opacity: 0.6; }
+  93% { transform: translate(-1px, 1px); opacity: 0; }
+}
+@keyframes glitchBottomShift {
+  0%, 90%, 100% { transform: translate(0, 0); opacity: 0; }
+  91% { transform: translate(2px, 1px); opacity: 0.8; }
+  94% { transform: translate(-2px, 0); opacity: 0.5; }
+  96% { transform: translate(1px, -1px); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .glitch-text::before,
+  .glitch-text::after {
+    animation: none;
+    display: none;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: rgb(var(--color-ink-950));
+  color: rgb(var(--color-paper));
+  font-feature-settings: "ss01";
+}
+
+::selection {
+  background: rgb(var(--color-thread-indigo));
+  color: rgb(var(--color-ink-950));
+}
+
+/* visible keyboard focus everywhere */
+:focus-visible {
+  outline: 2px solid rgb(var(--color-thread-teal));
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.thread-rule {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(var(--color-thread-teal)) 20%,
+    rgb(var(--color-thread-indigo)) 50%,
+    rgb(var(--color-thread-violet)) 80%,
+    transparent 100%
+  );
+  opacity: 0.5;
+}
+
+.bg-noise {
+  background-image: radial-gradient(
+    rgb(var(--noise-dot) / 0.035) 1px,
+    transparent 1px
+  );
+  background-size: 3px 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.input {
+  width: 100%;
+  background: rgb(var(--color-ink-900));
+  border: 1px solid rgb(var(--color-ink-700));
+  border-radius: 0.6rem;
+  padding: 0.65rem 0.9rem;
+  color: rgb(var(--color-paper));
+  font-size: 0.925rem;
+  transition: border-color 0.15s ease;
+}
+.input:focus {
+  border-color: rgb(var(--color-thread-teal));
+}
+
+.btn-primary {
+  background-image: linear-gradient(90deg, rgb(var(--color-thread-teal)) 0%, rgb(var(--color-thread-indigo)) 45%, rgb(var(--color-thread-violet)) 100%);
+  color: rgb(var(--color-ink-950));
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0.7rem 1.5rem;
+  font-size: 0.9rem;
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.btn-primary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  border: 1px solid rgb(var(--color-ink-700));
+  color: rgb(var(--color-paper));
+  border-radius: 999px;
+  padding: 0.7rem 1.5rem;
+  font-size: 0.9rem;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.btn-secondary:hover:not(:disabled) {
+  border-color: rgb(var(--color-thread-teal));
+  color: rgb(var(--color-thread-teal));
+}
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* custom scrollbar, subtle */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: rgb(var(--color-ink-950));
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--color-ink-700));
+  border-radius: 8px;
+}
+
+/* =====================================================================
+   CINEMATIC LAYER — added for the 3D/editorial redesign.
+   All colours resolve through the existing light/dark tokens above, so
+   every rule here responds to the master theme toggle automatically.
+   ===================================================================== */
+
+/* App content sits above the fixed WebGL scene + grid (both at z-0). */
+.app-shell {
+  position: relative;
+  z-index: 10;
+}
+
+/* ---------- Editorial reveal typography ---------- */
+.reveal-text {
+  display: inline;
+}
+.reveal-word {
+  display: inline-block;
+  white-space: nowrap;
+}
+.reveal-char {
+  display: inline-block;
+  white-space: pre;
+  will-change: opacity, transform, filter;
+}
+.reveal-armed .reveal-char {
+  opacity: 0;
+  transform: translateY(0.5em);
+  filter: blur(10px);
+  transition: opacity 0.8s cubic-bezier(0.25, 1, 0.5, 1),
+    transform 0.8s cubic-bezier(0.25, 1, 0.5, 1),
+    filter 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.reveal-armed.reveal-in .reveal-char {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+.reveal-block.reveal-armed {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.9s ease, transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal-block.reveal-armed.reveal-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ---------- Grid overlay ---------- */
+.grid-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.grid-datum {
+  position: fixed;
+  top: 64px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgb(var(--grid-line) / 0.028);
+}
+.grid-cols {
+  position: fixed;
+  top: 0;
+  left: 24px;
+  right: 24px;
+  height: 100vh;
+  display: flex;
+  justify-content: space-between;
+}
+.grid-col {
+  position: relative;
+  width: 1px;
+  height: 100%;
+  background: rgb(var(--grid-line) / 0.02);
+}
+.grid-dot {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgb(var(--grid-dot) / 0.2);
+  box-shadow: 0 0 6px rgb(var(--glow) / 0.35);
+}
+@media (min-width: 640px) {
+  .grid-cols { left: 40px; right: 40px; }
+}
+
+/* ---------- Custom cursor ---------- */
+.cursor-inner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  margin: 0;
+  border-radius: 50%;
+  background: rgb(var(--cursor));
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.25s ease, width 0.2s ease, height 0.2s ease;
+}
+.cursor-outer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 34px;
+  height: 34px;
+  border: 1.5px solid rgb(var(--cursor) / 0.55);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9998;
+  opacity: 0;
+  transition: opacity 0.3s ease, width 0.3s ease, height 0.3s ease,
+    border-color 0.3s ease, background 0.3s ease;
+}
+.cursor-outer.cursor-hover {
+  width: 52px;
+  height: 52px;
+  border-color: rgb(var(--glow) / 0.8);
+  background: rgb(var(--glow) / 0.06);
+}
+.cursor-outer.cursor-down {
+  width: 26px;
+  height: 26px;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.has-custom-cursor,
+  html.has-custom-cursor * {
+    cursor: none !important;
+  }
+}
+
+/* ---------- Glass surfaces & editorial helpers ---------- */
+.glass {
+  background: rgb(var(--glass) / 0.55);
+  backdrop-filter: blur(14px) saturate(115%);
+  -webkit-backdrop-filter: blur(14px) saturate(115%);
+  border: 1px solid rgb(var(--glass-border) / 0.1);
+}
+.light .glass {
+  background: rgb(var(--glass) / 0.62);
+  border-color: rgb(var(--glass-border) / 0.08);
+  box-shadow: 0 1px 40px -12px rgb(23 23 25 / 0.12);
+}
+.glass-strong {
+  background: rgb(var(--glass-strong) / 0.72);
+  backdrop-filter: blur(20px) saturate(120%);
+  -webkit-backdrop-filter: blur(20px) saturate(120%);
+  border: 1px solid rgb(var(--glass-border) / 0.12);
+}
+.light .glass-strong {
+  background: rgb(var(--glass-strong) / 0.75);
+  border-color: rgb(var(--glass-border) / 0.09);
+}
+.hairline {
+  border-color: rgb(var(--hairline) / 0.12) !important;
+}
+.text-glow {
+  text-shadow: 0 0 32px rgb(var(--glow) / 0.28);
+}
+.editorial {
+  font-variation-settings: "opsz" 40;
+  letter-spacing: -0.01em;
+}
+.eyebrow {
+  font-family: var(--font-plex-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+}
+/* Faint scanline veil to lift text off the live background where needed. */
+.veil-soft {
+  background: linear-gradient(
+    to bottom,
+    rgb(var(--veil) / 0) 0%,
+    rgb(var(--veil) / 0.35) 60%,
+    rgb(var(--veil) / 0.6) 100%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor-inner,
+  .cursor-outer {
+    display: none;
+  }
+}
