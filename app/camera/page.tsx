@@ -47,13 +47,23 @@ export default function CameraPage() {
     setUser(u);
     setWin(getCaptureWindow(u.id));
 
-    navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: "user" }, audio: false })
-      .then((stream) => {
-        streamRef.current = stream;
-        if (videoRef.current) videoRef.current.srcObject = stream;
-      })
-      .catch(() => setCameraError("Camera access was denied or is unavailable."));
+    const media =
+      typeof navigator !== "undefined" ? navigator.mediaDevices : undefined;
+    if (!media || typeof media.getUserMedia !== "function") {
+      // iOS WKWebView doesn't expose getUserMedia to remotely-loaded content,
+      // so guard it instead of crashing the whole page.
+      setCameraError(
+        "Live camera isn't available inside the app on this device. Open the site in Safari to capture, or use a build with the camera bundled locally."
+      );
+    } else {
+      media
+        .getUserMedia({ video: { facingMode: "user" }, audio: false })
+        .then((stream) => {
+          streamRef.current = stream;
+          if (videoRef.current) videoRef.current.srcObject = stream;
+        })
+        .catch(() => setCameraError("Camera access was denied or is unavailable."));
+    }
 
     return () => {
       streamRef.current?.getTracks().forEach((t) => t.stop());
