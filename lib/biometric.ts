@@ -39,37 +39,78 @@ function randomBytes(n: number): ArrayBuffer {
   return crypto.getRandomValues(new Uint8Array(n)).buffer;
 }
 
-// Lazily load the native plugin only inside the app, so SSR / the web build
-// never evaluate native code.
-async function getNativeBiometric(): Promise<any> {
-  // @ts-ignore - resolved and bundled in the native/client build; the package
-  // may not be present during a pure server-side typecheck.
-  const mod = await import("@capgo/capacitor-native-biometric");
-  return (mod as any).NativeBiometric;
+// Reject if a native call doesn't respond in time, so the UI can't hang
+// forever on "Waiting on device".
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`${label} timed out after ${ms / 1000}s.`)),
+        ms
+      )
+    ),
+  ]);
 }
 
+function nativeErrText(e: any): string {
+  if (!e) return "unknown native error";
+  return (
+    e.message ||
+    e.errorMessage ||
+    (e.code != null ? `code ${e.code}` : "") ||
+    (e.errorCode != null ? `errorCode ${e.errorCode}` : "") ||
+    (() => {
+      try {
+        return JSON.stringify(e);
+      } catch {
+        return String(e);
+      }
+    })()
+  );
+}
+
+// NOTE: never return a Capacitor plugin object out of an async function or
+// resolve a promise with it -- JS runs a thenable-check that calls `.then()`
+// on the proxy, which Capacitor forwards to native ("then() is not implemented
+// on ios"). So we import the module and call methods on it directly, inline.
+
 async function nativeAvailable(): Promise<boolean> {
+  // If the check itself errors or hangs, don't block -- let the actual
+  // verifyIdentity call run and produce a precise error instead.
   try {
-    const NativeBiometric = await getNativeBiometric();
-    const result = await NativeBiometric.isAvailable();
-    return !!result?.isAvailable;
+    // @ts-ignore - resolved in the native/client build
+    const mod: any = await import("@capgo/capacitor-native-biometric");
+    const result: any = await withTimeout(
+      mod.NativeBiometric.isAvailable(),
+      8000,
+      "Biometric availability check"
+    );
+    return result?.isAvailable !== false;
   } catch {
-    return false;
+    return true;
   }
 }
 
-async function nativePrompt(reason: string): Promise<boolean> {
+// Runs the native biometric prompt. Throws an Error with the REAL native
+// reason on failure (so the UI can display it), instead of swallowing it.
+async function nativePrompt(reason: string): Promise<void> {
+  // @ts-ignore - resolved in the native/client build
+  const mod: any = await import("@capgo/capacitor-native-biometric");
   try {
-    const NativeBiometric = await getNativeBiometric();
-    await NativeBiometric.verifyIdentity({
-      reason,
-      title: "CIPHERA",
-      subtitle: "Confirm it's you",
-      description: reason,
-    });
-    return true; // resolves only on success
-  } catch {
-    return false; // rejects on cancel / failure / no biometry
+    await withTimeout(
+      mod.NativeBiometric.verifyIdentity({
+        reason,
+        title: "CIPHERA",
+        subtitle: "Confirm it's you",
+        description: reason,
+        useFallback: true, // allow device passcode if Face ID fails
+      }),
+      45000,
+      "Face ID prompt"
+    );
+  } catch (e: any) {
+    throw new Error("Biometric failed: " + nativeErrText(e));
   }
 }
 
@@ -88,12 +129,9 @@ export async function enrollBiometric(
   epochNumber: number
 ): Promise<EnrollmentResult> {
   if (isNativeApp()) {
-    const ok = await nativePrompt(
+    await nativePrompt(
       "Scan to enroll your cancellable biometric key on this device."
     );
-    if (!ok) {
-      throw new Error("Biometric enrollment was cancelled or failed.");
-    }
     // No signature is returned by native biometrics, so we mint a random,
     // device-bound credential id + seed. This is stable for this enrollment
     // and unique per user/epoch, which is what the key-derivation chain needs.
@@ -110,8 +148,12 @@ export async function verifyLiveness(
   credentialId: string
 ): Promise<LivenessResult> {
   if (isNativeApp()) {
-    const ok = await nativePrompt("Confirm your identity to continue.");
-    return { ok, seedMaterial: ok ? randomBytes(32) : null };
+    try {
+      await nativePrompt("Confirm your identity to continue.");
+      return { ok: true, seedMaterial: randomBytes(32) };
+    } catch {
+      return { ok: false, seedMaterial: null };
+    }
   }
   return webVerify(credentialId);
 }
