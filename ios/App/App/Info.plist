@@ -68,5 +68,7 @@
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
 	<string>   Ciphera uses Face ID to confirm your identity.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Ciphera uses the camera to capture verified photos.</string>
 </dict>
 </plist>

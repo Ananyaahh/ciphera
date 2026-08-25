@@ -3,10 +3,10 @@ import type { CapacitorConfig } from "@capacitor/cli";
 const config: CapacitorConfig = {
   appId: "com.aryakelychankandy.ciphera",
   appName: "Ciphera",
-  webDir: "public",
+  webDir: "out",
   server: {
-    url: "https://ciphera-app.vercel.app",
-    cleartext: false,
+    hostname: "localhost",
+    iosScheme: "https",
   },
 };
 

@@ -19,6 +19,11 @@ import {
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
+// When the app is bundled locally (Capacitor build), the API routes aren't
+// packaged with it — they live on Vercel. NEXT_PUBLIC_API_BASE points calls
+// there. On the website itself this is empty, so calls stay same-origin.
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
+
 declare global {
   interface Window {
     google?: any;
@@ -63,7 +68,7 @@ export default function LoginPage() {
   // Ask the server to send an OTP to `phoneNumber`. Returns a demo code when
   // no SMS provider is configured server-side, otherwise null (real SMS sent).
   async function requestOtp(phoneNumber: string): Promise<string | null> {
-    const res = await fetch("/api/otp/send", {
+    const res = await fetch(`${API_BASE}/api/otp/send`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone: phoneNumber }),
@@ -116,7 +121,7 @@ export default function LoginPage() {
     setBusy(true);
     try {
       const otpPhone = pendingUser?.phone ?? phone.trim();
-      const res = await fetch("/api/otp/verify", {
+      const res = await fetch(`${API_BASE}/api/otp/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: otpPhone, code: otpInput.trim() }),
@@ -140,7 +145,7 @@ export default function LoginPage() {
     setError(null);
     setBusy(true);
     try {
-      const res = await fetch("/api/auth/google", {
+      const res = await fetch(`${API_BASE}/api/auth/google`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ credential: response?.credential }),
