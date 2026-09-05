@@ -24,6 +24,12 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Ciphera uses the camera to capture verified photos.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>   Ciphera uses Face ID to confirm your identity.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Ciphera records where a photo was captured to geotag it.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -66,9 +72,5 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
-	<key>NSFaceIDUsageDescription</key>
-	<string>   Ciphera uses Face ID to confirm your identity.</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Ciphera uses the camera to capture verified photos.</string>
 </dict>
 </plist>

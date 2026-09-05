@@ -50,23 +50,43 @@ export async function createAccount(
   username: string,
   password: string
 ): Promise<CipheraUser> {
-  if (getUserByUsername(username)) {
-    throw new Error("That username is already registered on this device.");
-  }
-  const id = randomId();
   const { hash, salt } = await hashPassword(password);
-  const identityToken = await deriveIdentityToken(id);
+  // identityToken needs a real id to derive from — but the backend now
+  // generates the id. We derive the token AFTER the backend responds.
+  const tempId = randomId();
+  const identityToken = await deriveIdentityToken(tempId);
+
+  const res = await fetch("/api/users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      username,
+      passwordHash: hash,
+      passwordSalt: salt,
+      identityToken,
+    }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.error ?? "Could not create account.");
+  }
+
   const user: CipheraUser = {
-    id,
-    username,
-    passwordHash: hash,
-    passwordSalt: salt,
-    createdAt: Date.now(),
-    currentEpoch: 0,
-    identityToken,
+    id: data.user.id,
+    username: data.user.username,
+    passwordHash: data.user.passwordHash,
+    passwordSalt: data.user.passwordSalt,
+    createdAt: new Date(data.user.createdAt).getTime(),
+    currentEpoch: data.user.currentEpoch,
+    identityToken: data.user.identityToken,
   };
+
+  // Still cache locally too, for now — nothing that reads users.ts yet
+  // knows how to fetch from the backend, so this keeps login/gallery/etc.
+  // working exactly as before until Step 7 migrates the read side.
   saveUser(user);
-  await createEpoch(id, 0);
+  await createEpoch(user.id, 0);
   return user;
 }
 

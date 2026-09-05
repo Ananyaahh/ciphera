@@ -46,9 +46,16 @@ export interface WatermarkPayload {
   imageId: string; // per-image id
   capturedAt: number; // when
   nonce: string; // per-capture random nonce (HKDF salt component)
-  imageHash: string; // sha-256 of the raw pixel buffer at capture time
+  imageHash: string; 
+  geo?: GeoTag | null;// sha-256 of the raw pixel buffer at capture time
 }
 
+export interface GeoTag {
+  lat: number;
+  lng: number;
+  accuracy?: number;
+  capturedAt: number;
+}
 export interface LedgerRecord {
   index: number;
   type: "capture" | "revocation";

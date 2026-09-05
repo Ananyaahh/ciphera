@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import { getCurrentUser } from "@/lib/auth";
@@ -12,8 +12,8 @@ import VerificationCard from "@/components/VerificationCard";
 import type { CipheraImage, VerificationResult } from "@/lib/types";
 
 export default function Detail() {
-  const params = useParams<{ id: string }>();
   const router = useRouter();
+  const [id, setId] = useState("");
   const [image, setImage] = useState<CipheraImage | null>(null);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [result, setResult] = useState<VerificationResult | null>(null);
@@ -21,18 +21,29 @@ export default function Detail() {
   const [tampered, setTampered] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // Read ?id= straight from the URL after mount. Using useSearchParams here
+  // triggered a hydration/Suspense error (React #423) inside the static
+  // export running in the Capacitor WebView, so we avoid it entirely.
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      setId(params.get("id") ?? "");
+    }
+  }, []);
+
   useEffect(() => {
     const u = getCurrentUser();
     if (!u) {
       router.replace("/login");
       return;
     }
-    getImage(params.id).then((img) => {
+    if (!id) return;
+    getImage(id).then((img) => {
       if (!img) return;
       setImage(img);
       setObjectUrl(blobToObjectUrl(img.blob));
     });
-  }, [params.id, router]);
+  }, [id, router]);
 
   async function runVerification() {
     if (!image) return;
@@ -137,6 +148,42 @@ export default function Detail() {
                   <dt className="text-muted">ledger #</dt>
                   <dd>{image.ledgerIndex}</dd>
                 </dl>
+              </div>
+
+              <div className="glass rounded-xl p-5">
+                <h2 className="font-display text-lg mb-3">Location · geotag</h2>
+                {image.payload.geo ? (
+                  <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 font-mono text-xs">
+                    <dt className="text-muted">latitude</dt>
+                    <dd>{image.payload.geo.lat.toFixed(6)}</dd>
+                    <dt className="text-muted">longitude</dt>
+                    <dd>{image.payload.geo.lng.toFixed(6)}</dd>
+                    {image.payload.geo.accuracy != null && (
+                      <>
+                        <dt className="text-muted">accuracy</dt>
+                        <dd>±{Math.round(image.payload.geo.accuracy)} m</dd>
+                      </>
+                    )}
+                    <dt className="text-muted">fix time</dt>
+                    <dd>{new Date(image.payload.geo.capturedAt).toLocaleString()}</dd>
+                    <dt className="text-muted">map</dt>
+                    <dd>
+                      <a
+                        className="text-thread-teal hover:underline break-all"
+                        href={`https://www.google.com/maps/search/?api=1&query=${image.payload.geo.lat},${image.payload.geo.lng}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        open in Maps
+                      </a>
+                    </dd>
+                  </dl>
+                ) : (
+                  <p className="text-muted text-xs font-mono">
+                    No location was recorded for this capture (location
+                    permission off, or unavailable at capture time).
+                  </p>
+                )}
               </div>
 
               <div className="glass rounded-xl p-5 space-y-3">

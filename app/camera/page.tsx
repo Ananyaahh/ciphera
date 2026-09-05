@@ -18,8 +18,78 @@ import { hkdf, randomHex, randomId, sha256Hex, signHex, bufToHex } from "@/lib/c
 import { getDeviceKeyPair, putImage, getImagesForUser } from "@/lib/db";
 import { appendRecord } from "@/lib/ledger";
 import { embedWatermark } from "@/lib/watermark";
-import type { CipheraUser, CaptureSessionWindow, CipheraImage } from "@/lib/types";
+import type { CipheraUser, CaptureSessionWindow, CipheraImage, GeoTag } from "@/lib/types";
 import Link from "next/link";
+
+// Requests a one-shot GPS fix at capture time. In the native app it uses the
+// Capacitor Geolocation plugin (real iOS location + the proper permission
+// prompt); on the web it falls back to the browser API. Resolves to null if
+// denied/unavailable so capture is never blocked.
+// Resolves to `val` after `ms` no matter what — used to make sure no async
+// step (GPS, video frame) can ever block the shutter indefinitely.
+function timeout<T>(ms: number, val: T): Promise<T> {
+  return new Promise((r) => setTimeout(() => r(val), ms));
+}
+
+async function getGeoTag(): Promise<GeoTag | null> {
+  const isNative =
+    typeof window !== "undefined" &&
+    (window as any).Capacitor?.isNativePlatform?.() === true;
+
+  if (isNative) {
+    try {
+      // @ts-ignore - resolved in the native/client build
+      const mod: any = await import("@capacitor/geolocation");
+      // Bounded permission request (don't let it hang the capture).
+      await Promise.race([
+        mod.Geolocation.requestPermissions().catch(() => null),
+        timeout(4000, null),
+      ]);
+      const pos: any = await Promise.race([
+        mod.Geolocation
+          .getCurrentPosition({
+            enableHighAccuracy: false,
+            timeout: 5000,
+            maximumAge: 60000,
+          })
+          .catch(() => null),
+        timeout(5000, null),
+      ]);
+      if (!pos?.coords) return null;
+      return {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+        capturedAt: Date.now(),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  if (typeof navigator === "undefined" || !navigator.geolocation) return null;
+  return new Promise<GeoTag | null>((resolve) => {
+    let settled = false;
+    const done = (v: GeoTag | null) => {
+      if (!settled) {
+        settled = true;
+        resolve(v);
+      }
+    };
+    navigator.geolocation.getCurrentPosition(
+      (pos) =>
+        done({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          capturedAt: Date.now(),
+        }),
+      () => done(null),
+      { enableHighAccuracy: false, timeout: 3000, maximumAge: 60000 }
+    );
+    setTimeout(() => done(null), 3500);
+  });
+}
 
 export default function CameraPage() {
   const router = useRouter();
@@ -36,8 +106,13 @@ export default function CameraPage() {
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [recent, setRecent] = useState<CipheraImage[]>([]);
   const [flash, setFlash] = useState(false);
+  const [facing, setFacing] = useState<"user" | "environment">("user");
+  const lastGeoRef = useRef<GeoTag | null>(null);
 
-  // auth + camera bootstrap
+  function flipCamera() {
+    setFacing((f) => (f === "user" ? "environment" : "user"));
+  }
+  // auth bootstrap (redirect if not signed in)
   useEffect(() => {
     const u = getCurrentUser();
     if (!u) {
@@ -46,30 +121,60 @@ export default function CameraPage() {
     }
     setUser(u);
     setWin(getCaptureWindow(u.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  // (re)start the camera stream whenever the facing direction changes
+  useEffect(() => {
     const media =
       typeof navigator !== "undefined" ? navigator.mediaDevices : undefined;
     if (!media || typeof media.getUserMedia !== "function") {
-      // iOS WKWebView doesn't expose getUserMedia to remotely-loaded content,
-      // so guard it instead of crashing the whole page.
       setCameraError(
         "Live camera isn't available inside the app on this device. Open the site in Safari to capture, or use a build with the camera bundled locally."
       );
-    } else {
-      media
-        .getUserMedia({ video: { facingMode: "user" }, audio: false })
-        .then((stream) => {
-          streamRef.current = stream;
-          if (videoRef.current) videoRef.current.srcObject = stream;
-        })
-        .catch(() => setCameraError("Camera access was denied or is unavailable."));
+      return;
     }
+    let cancelled = false;
+    // stop any existing stream before switching cameras
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    media
+      .getUserMedia({ video: { facingMode: facing }, audio: false })
+      .then((stream) => {
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        streamRef.current = stream;
+        setCameraError(null);
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(() => {});
+          // Warm up the capture pipeline: draw a few throwaway frames so the
+          // user's very first real capture isn't the cold (black) frame that
+          // iOS WebViews hand back on the first draw.
+          const v = videoRef.current;
+          const warm = () => {
+            const c = document.createElement("canvas");
+            c.width = v.videoWidth || 320;
+            c.height = v.videoHeight || 240;
+            try {
+              c.getContext("2d")?.drawImage(v, 0, 0, c.width, c.height);
+            } catch {}
+          };
+          for (let i = 0; i < 5; i++) setTimeout(warm, 150 * (i + 1));
+          // Kick off a location fix now so it's cached by capture time.
+          getGeoTag().then((g) => {
+            if (g) lastGeoRef.current = g;
+          });
+        }
+      })
+      .catch(() => setCameraError("Camera access was denied or is unavailable."));
 
     return () => {
+      cancelled = true;
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [facing]);
 
   useEffect(() => {
     if (!user) return;
@@ -123,18 +228,77 @@ export default function CameraPage() {
 
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      const w = video.videoWidth || 960;
-      const h = video.videoHeight || 720;
-      canvas.width = w;
-      canvas.height = h;
+
+      // Make sure the camera actually has pixels and has painted at least one
+      // real frame. iOS WebViews frequently hand back an all-black frame on the
+      // very first capture even after readyState is fine, so we grab, check for
+      // black, and retry a few times until we get a real frame.
+      const w0 = () => video.videoWidth || 960;
+      const h0 = () => video.videoHeight || 720;
       const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
-      ctx.drawImage(video, 0, 0, w, h);
-      const rawImageData = ctx.getImageData(0, 0, w, h);
+
+      const grab = () => {
+        canvas.width = w0();
+        canvas.height = h0();
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        return ctx.getImageData(0, 0, canvas.width, canvas.height);
+      };
+      const isBlack = (d: ImageData) => {
+        // sample every ~200th pixel; treat near-zero luminance as black
+        let sum = 0;
+        for (let i = 0; i < d.data.length; i += 800) {
+          sum += d.data[i] + d.data[i + 1] + d.data[i + 2];
+        }
+        return sum < 20;
+      };
+
+      // Kick off / refresh the location fix in parallel (won't block if the
+      // primed value from camera open is already available).
+      const geoPromise = getGeoTag().then((g) => g ?? lastGeoRef.current);
+
+      // Guarantee the video has actually painted a frame before we grab it.
+      const waitFrame = () =>
+        Promise.race([
+          new Promise<void>((r) => {
+            const anyV = video as any;
+            if (typeof anyV.requestVideoFrameCallback === "function") {
+              anyV.requestVideoFrameCallback(() => r());
+            } else {
+              requestAnimationFrame(() => r());
+            }
+          }),
+          timeout(400, undefined as void),
+        ]);
+      await waitFrame();
+      await waitFrame();
+
+      let rawImageData = grab();
+      const retryStart = Date.now();
+      for (
+        let i = 0;
+        i < 20 &&
+        Date.now() - retryStart < 2500 &&
+        (video.videoWidth === 0 || isBlack(rawImageData));
+        i++
+      ) {
+        await waitFrame();
+        await new Promise((r) => setTimeout(r, 50));
+        rawImageData = grab();
+      }
+      const w = canvas.width;
+      const h = canvas.height;
 
       const imageHash = await sha256Hex(rawImageData.data as unknown as Uint8Array);
       const nonce = randomHex(16);
       const imageId = randomId();
       const capturedAt = Date.now();
+
+      // Use the location primed when the camera opened. Wait at most 1.5s for
+      // a fresh fix so the shutter is never blocked; otherwise use primed/null.
+      const geo =
+        (await Promise.race([geoPromise, timeout(1500, null)])) ??
+        lastGeoRef.current;
+      if (geo) lastGeoRef.current = geo;
 
       const keyPair = await getDeviceKeyPair(user.id);
       if (!keyPair) {
@@ -165,6 +329,7 @@ export default function CameraPage() {
         capturedAt,
         nonce,
         imageHash,
+        geo,
       };
 
       const payloadHash = await sha256Hex(JSON.stringify(payload));
@@ -233,8 +398,19 @@ export default function CameraPage() {
               autoPlay
               playsInline
               muted
-              className="w-full h-full object-cover scale-x-[-1]"
+              className={`w-full h-full object-cover ${
+                facing === "user" ? "scale-x-[-1]" : ""
+              }`}
             />
+            {!cameraError && (
+              <button
+                onClick={flipCamera}
+                aria-label="Flip camera"
+                className="absolute bottom-3 right-3 font-mono text-[11px] uppercase tracking-wider bg-ink-950/70 rounded-full px-3 py-1.5 hover:text-thread-teal"
+              >
+                ⟳ {facing === "user" ? "Front" : "Back"}
+              </button>
+            )}
             {flash && <div className="absolute inset-0 bg-white/80 animate-none" />}
             {cameraError && (
               <div className="absolute inset-0 flex items-center justify-center bg-ink-950/90 px-8 text-center text-sm text-muted">
@@ -306,7 +482,7 @@ export default function CameraPage() {
                 {recent.map((img) => (
                   <Link
                     key={img.id}
-                    href={`/gallery/${img.id}`}
+                    href={`/gallery/view?id=${img.id}`}
                     className="block rounded-lg overflow-hidden border border-ink-700 hover:border-thread-teal transition-colors"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}

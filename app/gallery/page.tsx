@@ -11,6 +11,7 @@ import { verifyImageData } from "@/lib/verify";
 import { blobToImageData, blobToDataURL } from "@/lib/image";
 import VerificationCard from "@/components/VerificationCard";
 import CurvedRingArchive, { RingItem } from "@/components/blocks/CurvedRingArchive";
+import SafeBoundary from "@/components/SafeBoundary";
 import type { CipheraImage, CipheraUser, VerificationResult } from "@/lib/types";
 
 export default function GalleryPage() {
@@ -234,15 +235,32 @@ export default function GalleryPage() {
               </Link>
             </div>
           ) : (
-            <CurvedRingArchive
-              theme={siteTheme}
-              accent="orange"
-              embedded
-              items={ringItems}
-              onVerify={handleRingVerify}
-              onOpenFullDetail={(item) => router.push(`/gallery/${item.id}`)}
-              onDelete={handleRingDelete}
-            />
+            <SafeBoundary
+              fallback={
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {ringItems.map((it) => (
+                    <button
+                      key={it.id}
+                      onClick={() => router.push(`/gallery/view?id=${it.id}`)}
+                      className="block rounded-lg overflow-hidden border border-ink-700 hover:border-thread-teal"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={it.image} alt="" className="w-full aspect-square object-cover" />
+                    </button>
+                  ))}
+                </div>
+              }
+            >
+              <CurvedRingArchive
+                theme={siteTheme}
+                accent="orange"
+                embedded
+                items={ringItems}
+                onVerify={handleRingVerify}
+                onOpenFullDetail={(item) => router.push(`/gallery/view?id=${item.id}`)}
+                onDelete={handleRingDelete}
+              />
+            </SafeBoundary>
           )}
         </div>
       </main>

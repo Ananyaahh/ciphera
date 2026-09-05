@@ -7,13 +7,17 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "db:push": "drizzle-kit push",
     "build:app": "rm -rf out && mv app/api .api-tmp && (env NEXT_PUBLIC_API_BASE=https://ciphera-app.vercel.app BUILD_TARGET=static next build; mv .api-tmp app/api)"
   },
   "dependencies": {
     "@capacitor/cli": "^8.5.0",
     "@capacitor/core": "^8.5.0",
+    "@capacitor/geolocation": "^8.2.2",
     "@capacitor/ios": "^8.5.0",
     "@capgo/capacitor-native-biometric": "^8.6.7",
+    "@neondatabase/serverless": "^1.1.0",
+    "drizzle-orm": "^0.45.2",
     "gsap": "^3.15.0",
     "lucide-react": "^0.462.0",
     "motion": "^12.42.2",
@@ -27,6 +31,8 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.19",
+    "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.31.10",
     "postcss": "^8.4.39",
     "tailwindcss": "^3.4.4",
     "typescript": "^5.5.3"
