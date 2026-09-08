@@ -90,5 +90,6 @@ export interface VerificationResult {
   epochStatus: "active" | "revoked" | null;
   ledgerMatch: boolean;
   fragileIntact: boolean;
+  geo?: GeoTag | null;
   details: string;
 }

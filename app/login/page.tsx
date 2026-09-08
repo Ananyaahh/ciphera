@@ -236,7 +236,7 @@ export default function LoginPage() {
         attachCredential(pendingUser.id, credentialId);
         const keyPair = await generateDeviceKeyPair();
         await putDeviceKeyPair(pendingUser.id, keyPair);
-        attachPublicKey(pendingUser.id, await exportPublicKeyJwk(keyPair.publicKey));
+        await attachPublicKey(pendingUser.id, await exportPublicKeyJwk(keyPair.publicKey));
         setBioStatus("Biometric enrolled and bound to this device.");
       } else {
         const existingKeyPair = await getDeviceKeyPair(pendingUser.id);
@@ -250,7 +250,7 @@ export default function LoginPage() {
           attachCredential(pendingUser.id, credentialId);
           const keyPair = await generateDeviceKeyPair();
           await putDeviceKeyPair(pendingUser.id, keyPair);
-          attachPublicKey(pendingUser.id, await exportPublicKeyJwk(keyPair.publicKey));
+          await attachPublicKey(pendingUser.id, await exportPublicKeyJwk(keyPair.publicKey));
           setBioStatus("This device wasn't enrolled yet — enrolled it now.");
         } else {
           const result = await verifyLiveness(pendingUser.webauthnCredentialId);

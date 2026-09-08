@@ -35,6 +35,15 @@ export default function VerificationCard({ result }: { result: VerificationResul
             <dd>{new Date(result.capturedAt).toLocaleString()}</dd>
           </>
         )}
+        {result.geo && (
+          <>
+            <dt className="text-muted">where</dt>
+            <dd>
+              {result.geo.lat.toFixed(5)}, {result.geo.lng.toFixed(5)}
+              {result.geo.accuracy ? ` (±${Math.round(result.geo.accuracy)}m)` : ""}
+            </dd>
+          </>
+        )}
         {result.epochNumber !== null && (
           <>
             <dt className="text-muted">epoch</dt>

@@ -105,11 +105,24 @@ export function attachCredential(userId: string, credentialId: string) {
   saveUser(user);
 }
 
-export function attachPublicKey(userId: string, jwk: JsonWebKey) {
+export async function attachPublicKey(userId: string, jwk: JsonWebKey) {
   const user = getUserById(userId);
   if (!user) throw new Error("Unknown user.");
   user.publicKeyJwk = jwk;
   saveUser(user);
+
+  // Also register this device's PUBLIC key with the shared backend, so
+  // other devices can verify signatures made by this one. Non-fatal if it
+  // fails -- local capture/signing still works either way.
+  try {
+    await fetch("/api/devices", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, publicKeyJwk: jwk }),
+    });
+  } catch {
+    // ignore -- backend registration is best-effort here
+  }
 }
 
 export function attachPhone(userId: string, phone: string) {

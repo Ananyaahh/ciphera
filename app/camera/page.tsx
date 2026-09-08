@@ -365,6 +365,30 @@ export default function CameraPage() {
       };
       await putImage(record);
 
+      // Also anchor this capture to the SHARED backend ledger, so other
+      // devices/users can verify it later. Non-fatal if it fails -- the
+      // local capture above already succeeded either way.
+      try {
+        await fetch("/api/captures", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            epochNumber: activeWindow.epochNumber,
+            imageHash,
+            fragileHash: embedded.fragileHash,
+            width: w,
+            height: h,
+            capturedAt,
+            geo,
+            payloadHash,
+            signature,
+          }),
+        });
+      } catch {
+        // ignore -- backend registration is best-effort here
+      }
+
       const updatedWindow = consumeCaptureFrame(user.id);
       setWin(updatedWindow);
       setFlash(true);
