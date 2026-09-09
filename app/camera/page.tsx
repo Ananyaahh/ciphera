@@ -21,6 +21,8 @@ import { embedWatermark } from "@/lib/watermark";
 import type { CipheraUser, CaptureSessionWindow, CipheraImage, GeoTag } from "@/lib/types";
 import Link from "next/link";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
+
 // Requests a one-shot GPS fix at capture time. In the native app it uses the
 // Capacitor Geolocation plugin (real iOS location + the proper permission
 // prompt); on the web it falls back to the browser API. Resolves to null if
@@ -369,7 +371,7 @@ export default function CameraPage() {
       // devices/users can verify it later. Non-fatal if it fails -- the
       // local capture above already succeeded either way.
       try {
-        await fetch("/api/captures", {
+        await fetch(`${API_BASE}/api/captures`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

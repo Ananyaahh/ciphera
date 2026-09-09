@@ -9,6 +9,8 @@ import { hashPassword, randomHex, randomId, sha256Hex, deriveIdentityToken } fro
 import { appendRecord } from "./ledger";
 import type { CipheraUser, KeyEpoch, CaptureSessionWindow } from "./types";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
+
 const USERS_KEY = "ciphera:users:v1";
 const EPOCHS_KEY = "ciphera:epochs:v1";
 const SESSION_KEY = "ciphera:session:v1";
@@ -56,7 +58,7 @@ export async function createAccount(
   const tempId = randomId();
   const identityToken = await deriveIdentityToken(tempId);
 
-  const res = await fetch("/api/users", {
+  const res = await fetch(`${API_BASE}/api/users`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -115,7 +117,7 @@ export async function attachPublicKey(userId: string, jwk: JsonWebKey) {
   // other devices can verify signatures made by this one. Non-fatal if it
   // fails -- local capture/signing still works either way.
   try {
-    await fetch("/api/devices", {
+    await fetch(`${API_BASE}/api/devices`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, publicKeyJwk: jwk }),

@@ -7,6 +7,8 @@
 import { extractWatermark } from "./watermark";
 import type { VerificationResult } from "./types";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
+
 export async function verifyImageData(
   imageData: ImageData
 ): Promise<VerificationResult> {
@@ -29,7 +31,7 @@ export async function verifyImageData(
   }
 
   try {
-    const res = await fetch("/api/verify", {
+    const res = await fetch(`${API_BASE}/api/verify`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
