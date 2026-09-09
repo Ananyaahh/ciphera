@@ -100,3 +100,11 @@ export const captures = pgTable("captures", {
   userIdIdx: index("captures_user_id_idx").on(t.userId),
   imageHashIdx: index("captures_image_hash_idx").on(t.imageHash),
 }));
+// ---------- OTP codes (demo mode) ----------
+// Stored in Postgres, not memory -- serverless functions don't share memory
+// between requests, so an in-memory code wouldn't survive from /send to /verify.
+export const otpCodes = pgTable("otp_codes", {
+  phone: text("phone").primaryKey(),
+  code: text("code").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
