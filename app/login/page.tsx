@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Nav from "@/components/Nav";
 import SecurityThread from "@/components/SecurityThread";
 import LightRays from "@/components/reactbits/LightRays";
+import QRCode from "qrcode";
 import {
   createAccount,
   getUserByUsername,
@@ -55,6 +56,7 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [bioStatus, setBioStatus] = useState<string | null>(null);
   const googleBtnRef = useRef<HTMLDivElement>(null);
+  const qrCanvasRef = useRef<HTMLCanvasElement>(null);
 
   function resetFlow() {
     setStep("credentials");
@@ -214,6 +216,24 @@ export default function LoginPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, mode]);
 
+  // Draw the Robust Watermark ID QR code once enrollment finishes. This
+  // encodes only PUBLIC info (username + identityToken) -- the same data
+  // already embedded in every photo's watermark. The actual private
+  // signing key is non-extractable and never touches this or any QR code.
+  useEffect(() => {
+    if (step !== "done" || !pendingUser || !qrCanvasRef.current) return;
+    const payload = JSON.stringify({
+      app: "ciphera",
+      username: pendingUser.username,
+      identityToken: pendingUser.identityToken,
+    });
+    QRCode.toCanvas(qrCanvasRef.current, payload, {
+      width: 220,
+      margin: 2,
+      color: { dark: "#0a0a0c", light: "#f5efe6" },
+    }).catch(() => {});
+  }, [step, pendingUser]);
+
   async function handleBiometric() {
     if (!pendingUser) return;
     setError(null);
@@ -260,7 +280,6 @@ export default function LoginPage() {
       }
       setSession(pendingUser.id);
       setStep("done");
-      setTimeout(() => router.push("/camera"), 900);
     } catch (err: any) {
       setError(err.message ?? "Biometric step failed.");
       setBioStatus(null);
@@ -427,11 +446,32 @@ export default function LoginPage() {
             )}
 
             {step === "done" && (
-              <div className="text-center py-6 space-y-3">
+              <div className="text-center py-6 space-y-4">
                 <p className="text-thread-teal font-display text-xl">
                   You're enrolled.
                 </p>
-                <p className="text-muted text-sm">Redirecting to the camera…</p>
+
+                <div className="pt-2">
+                  <p className="text-xs font-mono uppercase tracking-wider text-muted mb-3">
+                    Your Robust Watermark ID
+                  </p>
+                  <div className="glass rounded-2xl p-4 inline-block">
+                    <canvas ref={qrCanvasRef} className="rounded-lg" />
+                  </div>
+                  <p className="text-muted text-xs mt-3 leading-relaxed max-w-xs mx-auto">
+                    This QR is your public identity — safe to share. It's the
+                    same information already embedded in every photo you
+                    capture. Your private signing key never leaves this
+                    device.
+                  </p>
+                </div>
+
+                <button
+                  className="btn-primary w-full"
+                  onClick={() => router.push("/camera")}
+                >
+                  Continue to camera →
+                </button>
               </div>
             )}
           </div>
