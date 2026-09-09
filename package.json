@@ -11,6 +11,7 @@
     "build:app": "rm -rf out && mv app/api .api-tmp && (env NEXT_PUBLIC_API_BASE=https://ciphera-liard.vercel.app BUILD_TARGET=static next build; mv .api-tmp app/api)"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.1",
     "@capacitor/cli": "^8.5.0",
     "@capacitor/core": "^8.5.0",
     "@capacitor/geolocation": "^8.2.2",

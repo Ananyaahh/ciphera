@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Ciphera</string>
+    <string name="title_activity_main">Ciphera</string>
+    <string name="package_name">com.aryakelychankandy.ciphera</string>
+    <string name="custom_url_scheme">com.aryakelychankandy.ciphera</string>
+</resources>
